@@ -17,8 +17,8 @@ def index():
     })
     data = p.json()
     session['token'] = data['data']['token']
-    # return render_template("dashboard.html", token=data['data']['token'])
-    return render_template("index.html", count=1)
+    return render_template("dashboard.html", token=data['data']['token'])
+    # return render_template("index.html", count=1)
 
 @app.route('/iframe/cryptoidx')
 def render_cryptoidx():
