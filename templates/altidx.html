@@ -1,0 +1,637 @@
+<html>
+<body>
+
+<style type="text/css">
+    .btn-indicator-warning{
+      background-color:#ffd43b !important;border: 1px solid #183153;border-radius: 3px;
+    }
+    .btn-indicator-active{
+      background-color:#15aabf !important;border: 1px solid #183153;border-radius: 3px;
+    }
+    .btn-default{
+      background-color:#efefef;border: 1px solid #183153;border-radius: 3px;
+    }
+    .circleBase {
+      border-radius: 50%;
+      margin-left: 100px;
+      behavior: url(PIE.htc); /* remove if you don't care about IE8 */
+    }
+    .type3 {
+      width: 25px;
+      height: 21px;
+      background: #820c0c;
+      border: 2px solid #f86060;
+      vertical-align: middle;
+      text-align: center;
+      padding-top: 3px;
+      margin: 0 auto;
+      margin-top: 35px;
+    }
+    .trend_info{
+      vertical-align: middle;
+      margin-top: -23px;
+      width: 250px;
+    }
+    .trend_info b{
+      border-radius: 3px;
+      padding: 5px 10px;
+    }
+    .warning{
+      background: #820c0c;
+      border: 1px solid #f86060;
+    }
+    .success{
+      background: #268240;
+      border: 1px solid #5bc77a;
+    }
+  </style>
+{#      <script src="https://n00btrader.com/signal/assets/js/jquery.min.js"></script>#}
+      <script src="../static/js/jquery.js"></script>
+{#      <script src="https://n00btrader.com/signal/assets/js/apexcharts.js"></script>#}
+        <script src="../static/js/apexcharts.js"></script>
+{#    <script src="https://n00btrader.com/signal/assets/js/klinecharts.min.js"></script>#}
+    <script src="../static/js/klinecharts.js"></script>
+{#    <script src="https://n00btrader.com/signal/assets/js/fontawesome.min.js"></script>#}
+    <script src="../static/js/fontawesome.js"></script>
+
+
+      <div class="container" style="height: 3%;color: #ffffff;display: none;">
+        <div class="row">
+          <!-- <div class="col-sm">
+            VOLUME :
+          </div> -->
+          <div class="col-sm">
+            Indication : <label id="indikasi"></label>
+          </div>
+          <div class="col-sm">
+            Information : <label id="informasi"></label>
+          </div>
+          <div class="col-sm">
+            Confirmation : <label id="konfirmasi"></label>
+          </div>
+        </div>
+        </div>
+        <div class="row" style="height: 3%;">
+          <div class="col-md-12" style="color:#fff;">
+            <button type="button" class="btn btn-default mr-2 mb-1 delete btn-indicator-warning"><span >Alt/IDX</span></button>&nbsp;
+            <button type="button" class="btn btn-default mr-2 mb-1 delete btn-macd" onclick="macd_on()"><span>MACD</span></button>
+            <button type="button" class="btn btn-default mr-2 mb-1 delete btn-sar" onclick="sar_on()"><span>SAR</span></button>
+            <div class="circleBase type3" id="countdown"></div>
+            <div class="trend_info" id="trend_info"></div>
+            <!-- <button type="button" class="btn btn-default mr-2 mb-1 delete btn-signal-per-candle" onclick="percandle_on()"><span>Signal Per-Candle</span></button>   -->
+            <input type="date" class="form-control" name="date" value="2021-09-02" max='2021-09-02' id="date" style="display: none;">
+          </div>
+        </div>
+        <div id="chart" style="height: 97%"></div>
+        <div style="display:none;">
+{#          <img id="source" src="https://n00btrader.com/signal/assets/images/up.png" width="300" height="227">#}
+            <img id="source" src="../static/img/up.png" width="300" height="227">
+{#          <img id="source" src="https://n00btrader.com/signal/assets/images/down.png" width="300" height="227">#}
+            <img id="source" src="../static/img/down.png" width="300" height="227">
+        </div>
+
+        <audio id="notif_audio">
+  <!--<source src="https://n00btrader.com/signal/sounds/notify.ogg" type="audio/ogg">-->
+{#  <source src="https://n00btrader.com/signal/sounds/notify_op.mp3" autoplay="" type="audio/mpeg">#}
+  <source src="../static/audio/notify_op.mp3" type="audio/mpeg">
+  <!--<source src="https://n00btrader.com/signal/sounds/notify.wav" type="audio/wav">-->
+  </audio>
+
+  <input type="hidden" id="last_op_timestamp" value="">
+
+  <script>
+      document.title = "Alt-IDX SIGNAL BINOMO";
+      var editorExtensionId = "blmkaoageimjbfhddnfmigdghebjdicb";
+      var t;
+      let permission;
+
+      var d = new Date();
+      var n = d.getSeconds();
+      var timeLeft = 59 - n;
+      var timerId = setInterval(countdown, 1000);
+      function countdown() {
+        if (timeLeft == -1) {
+          clearTimeout(timerId);
+          d = new Date();
+          n = d.getSeconds();
+          timeLeft = 59 - n;
+          timerId = setInterval(countdown, 1000);
+          // doSomething();
+        } else {
+          $("#countdown").html(timeLeft);
+          timeLeft--;
+        }
+      }
+
+      function detectMob() {
+          const toMatch = [
+              /Android/i,
+              /webOS/i,
+              /iPhone/i,
+              /iPad/i,
+              /iPod/i,
+              /BlackBerry/i,
+              /Windows Phone/i
+          ];
+
+          return toMatch.some((toMatchItem) => {
+              return navigator.userAgent.match(toMatchItem);
+          });
+      }
+
+      var is_mobile = detectMob();
+
+      if(!is_mobile){
+          permission = Notification.permission;
+          if(permission === "granted") {
+             // showNotification();
+          } else if(permission === "default"){
+             requestAndShowPermission();
+          } else {
+            //alert("Use normal alert");
+          }
+          function showNotification(op="") {
+             // if(document.visibilityState === "visible") {
+             //     return;
+             // }
+             var title = "The Signal Alert!";
+             icon = "https://n00btrader.com/signal/assets/images/logo.png"
+             var body = "Alt-IDX : "+op;
+             var notification = new Notification(title, { body, icon });
+             notification.onclick = () => {
+                    notification.close();
+                    window.parent.focus();
+             }
+          }
+          function requestAndShowPermission() {
+             Notification.requestPermission(function (permission) {
+                if (permission === "granted") {
+                      showNotification();
+                }
+             });
+          }
+      }
+
+      // alert(is_mobile);
+
+
+
+  // window.onload = function () {
+          // 初始化图表
+          var chart = klinecharts.init('chart',{
+            grid: {
+              show: true,
+              horizontal: {
+                show: false,
+                size: 1,
+                color: '#393939',
+                // 'solid'|'dash'
+                style: 'dash',
+                dashValue: [2, 2]
+              },
+              vertical: {
+                show: true,
+                size: 1,
+                color: '#393939',
+                // 'solid'|'dash'
+                style: 'dash',
+                dashValue: [2, 2]
+              }
+            },
+            technicalIndicator:{
+              "margin":{
+                 "top":0.2,
+                 "bottom":0.1
+              },
+              "bar":{
+                 "upColor":"#26A69A",
+                 "downColor":"#EF5350",
+                 "noChangeColor":"#888888"
+              },
+              "line":{
+                 "size":1,
+                 "colors":[
+                    "#FF9600",
+                    "#9D65C9",
+                    "#2196F3",
+                    "#E11D74",
+                    "#01C5C4"
+                 ]
+              },
+              "circle":{
+                 "upColor":"#26A69A",
+                 "downColor":"#EF5350",
+                 "noChangeColor":"#888888"
+              },
+              "lastValueMark":{
+                 "show":false,
+                 "text":{
+                    "show":false,
+                    "color":"#ffffff",
+                    "size":12,
+                    "family":"Helvetica Neue",
+                    "weight":"normal",
+                    "paddingLeft":3,
+                    "paddingTop":2,
+                    "paddingRight":3,
+                    "paddingBottom":2
+                 }
+              },
+              "tooltip":{
+                 "showRule":"always",
+                 "showName":true,
+                 "showParams":true,
+                 "defaultValue":"n/a",
+                 "text":{
+                    "size":12,
+                    "family":"Helvetica Neue",
+                    "weight":"normal",
+                    "color":"#D9D9D9",
+                    "marginTop":6,
+                    "marginRight":8,
+                    "marginBottom":0,
+                    "marginLeft":8
+                 }
+              }
+           },
+            candle: {
+              // margin: {
+              //   top: 0.2,
+              //   bottom: 0.1
+              // },
+              // 'candle_solid'|'candle_stroke'|'candle_up_stroke'|'candle_down_stroke'|'ohlc'|'area'
+              // type: 'candle_solid',
+              bar: {
+                upColor: '#5BC77A',
+                downColor: '#EF5350',
+                noChangeColor: '#888888'
+              },
+              tooltip:{
+               "showRule":"always",
+               "showType":"standard",
+               "labels":[
+                  "Time : ",
+                  "Open : ",
+                  "Receive : ",
+                  "High : ",
+                  "Low : ",
+                  "Volume : "
+               ],
+               "values":null,
+               "defaultValue":"n/a",
+               "rect":{
+                  "paddingLeft":0,
+                  "paddingRight":0,
+                  "paddingTop":0,
+                  "paddingBottom":6,
+                  "offsetLeft":8,
+                  "offsetTop":8,
+                  "offsetRight":8,
+                  "borderRadius":4,
+                  "borderSize":1,
+                  "borderColor":"#3f4254",
+                  "fillColor":"rgba(17, 17, 17, .3)"
+               },
+               "text":{
+                  "size":12,
+                  "family":"Helvetica Neue",
+                  "weight":"normal",
+                  "color":"#D9D9D9",
+                  "marginLeft":8,
+                  "marginTop":6,
+                  "marginRight":8,
+                  "marginBottom":0
+               }
+            }
+
+            },
+
+
+          })
+
+          t=setInterval(updateData,1000);
+
+          // chart.createTechnicalIndicator('MACD')
+          // chart.createTechnicalIndicator('SAR', false, { id: 'candle_pane' })
+          // chart.createTechnicalIndicator('MA')
+
+          chart.subscribeAction('drawCandle', ({ ctx, dataIndex, kLineData, coordinate, isCandle }) => {
+            // console.log(kLineData.timestamp);
+               // do something
+               // Here it will be triggered as long as the candle is rendered
+
+               // chart.draw (ctx, '', coordinate.x, 0, "Test")
+               var image = document.createElement('img'); // use DOM HTMLImageElement
+               image.src = 'https://n00btrader.com/signal/assets/images/up.png';
+
+               var image2 = document.createElement('img'); // use DOM HTMLImageElement
+               image2.src = 'https://n00btrader.com/signal/assets/images/down.png';
+
+               if(kLineData.op == 'OP_BUY'){
+                  // if(kLineData.timestamp != $("#last_op_timestamp").val()){
+                  //   $('#notif_audio')[0].play();
+                  //   $("#last_op_timestamp").val(kLineData.timestamp);
+                  // }
+                  ctx.drawImage(image, coordinate.x - 10,coordinate.low + 20,20,20)
+                  ctx.fillText(kLineData.add_text, coordinate.x - 10, coordinate.low + 47);
+               }else if(kLineData.op == 'OP_SELL'){
+                  // if(kLineData.timestamp != $("#last_op_timestamp").val()){
+                  //   $('#notif_audio')[0].play();
+                  //   $("#last_op_timestamp").val(kLineData.timestamp);
+                  // }
+                  ctx.drawImage(image2, coordinate.x - 10,coordinate.high - 25,20,20)
+                  ctx.fillText(kLineData.add_text, coordinate.x - 10, coordinate.high - 30);
+               }
+
+               // if(kLineData.op != ''){
+               //    if()
+               // }
+
+
+               //  localStorage.setItem("mytime", Date.now());
+
+               // if()
+
+               // ctx.fillText("B",coordinate.x,coordinate.high - 10)
+               // console.log(kLineData.op)
+               // console.log(dataIndex, kLineData)
+          })
+
+          var paneId_macd;
+          var paneId_sar;
+
+          function macd_on(){
+            $(".btn-macd").attr("onclick","macd_off()");
+            $(".btn-macd").addClass("btn-indicator-active");
+            paneId_macd = chart.createTechnicalIndicator('MACD')
+          }
+
+          function macd_off(){
+            $(".btn-macd").attr("onclick","macd_on()");
+            $(".btn-macd").removeClass("btn-indicator-active");
+            chart.removeTechnicalIndicator(paneId_macd,'MACD')
+          }
+
+          function sar_on(){
+            $(".btn-sar").attr("onclick","sar_off()");
+            $(".btn-sar").addClass("btn-indicator-active");
+            paneId_sar = chart.createTechnicalIndicator('SAR', false, { id: 'candle_pane' })
+          }
+
+          function sar_off(){
+            $(".btn-sar").attr("onclick","sar_on()");
+            $(".btn-sar").removeClass("btn-indicator-active");
+            chart.removeTechnicalIndicator(paneId_sar,'SAR')
+          }
+
+          function percandle_on(){
+            $(".btn-signal-per-candle").attr("onclick","percandle_off()");
+            $(".btn-signal-per-candle").addClass("btn-indicator-active");
+            loadData(true);
+            clearInterval(t);
+            t=setInterval(function() {
+               updateData(true);
+             },1000);
+          }
+
+          function percandle_off(){
+            $(".btn-signal-per-candle").attr("onclick","percandle_on()");
+            $(".btn-signal-per-candle").removeClass("btn-indicator-active");
+            loadData(false);
+            clearInterval(t);
+            t=setInterval(function() {
+               updateData(false);
+             },1000);
+          }
+
+
+          function loadData(percandle=false){
+            if(!percandle){
+              var url = 'https://n00btrader.com/signal/sig.crypto.idx/api/data?type=json&token=fd2285f45f9f7983b427c25ab48a1ad12c0c05808b2541a36a13f3a7d355c62e&date='+$("#date").val();
+            }else{
+              var url = 'https://n00btrader.com/signal/sig.crypto.idx.new/api/data?type=json&token=fd2285f45f9f7983b427c25ab48a1ad12c0c05808b2541a36a13f3a7d355c62e&date='+$("#date").val();
+            }
+            url = '/api/getdata/loaddata/alt.idx/'+$("#date").val()
+            $.ajax({
+                type: 'GET',
+                url: url,
+                data: { },
+                dataType: 'json',
+                success: function (result) {
+                  $("#indikasi").html(result.indikasi);
+                  $("#konfirmasi").html(result.konfirmasi);
+                  $("#informasi").html(result.informasi);
+                  var dt = result.data;
+                  var chartDataList = dt.map(function (data) {
+                      return {
+                          timestamp: new Date(data[0]).getTime(),
+                          open: +data[1],
+                          high: +data[2],
+                          low: +data[3],
+                          close: +data[4],
+                          volume: Math.ceil(+data[5]),
+                          op: data[8],
+                          add_text: data[9],
+                      }
+                  })
+                  chart.applyNewData(chartDataList)
+                }
+            });
+
+          }
+
+          function blink(selector) {
+            $(selector).fadeOut('slow', function() {
+              $(this).fadeIn('slow', function() {
+                blink(this);
+              });
+            });
+          }
+
+          function updateData(percandle=false){
+            if(!percandle){
+              var url = 'https://n00btrader.com/signal/sig.crypto.idx/api/data?type=json&last=1&token=fd2285f45f9f7983b427c25ab48a1ad12c0c05808b2541a36a13f3a7d355c62e&date='+$("#date").val();
+
+            }else{
+              var url = 'https://n00btrader.com/signal/sig.crypto.idx.new/api/data?type=json&last=1&token=fd2285f45f9f7983b427c25ab48a1ad12c0c05808b2541a36a13f3a7d355c62e&date='+$("#date").val();
+            }
+            url = '/api/getdata/updates/alt.idx/'+$("#date").val()
+            $.ajax({
+                type: 'GET',
+                url: url,
+                data: { },
+                dataType: 'json',
+                success: function (result) {
+                    {#console.log(result)#}
+                  // var __op = localStorage.getItem("op");
+                  // var __time = localStorage.getItem("time");
+
+                  var data = result.data;
+                  if(data[8]){
+                    if(data[0] != $("#last_op_timestamp").val()){
+                      if(!is_mobile){
+                        showNotification(data[8]+" "+data[0]);
+                      }
+                      try {
+                        $('#notif_audio')[0].play();
+                      }catch(err) {
+                        console.log(err.message);
+                      }
+                      $("#last_op_timestamp").val(data[0]);
+                    }
+                  }
+
+                  if(data[10] == ""){
+                    $(".trend_info").html('');
+                  }else if(data[10] == "TREND_UP"){
+                    $(".trend_info").html('<b class="success">TREND UP TF 1 MIN</b>');
+                    blink(".trend_info");
+                  }else if(data[10] == "TREND_DOWN"){
+                    $(".trend_info").html('<b class="warning">TREND DOWN TF 1 MIN</b>');
+                    blink(".trend_info");
+                  }
+
+                  /*
+                  if(__op == "" && data[8] != "" && __time == ""){
+                    localStorage.setItem("op",data[8]);
+                    localStorage.setItem("time",data[0]);
+                    localStorage.setItem("open",data[1]);
+                    localStorage.setItem("close",data[4]);
+                    console.log("SEND OP COMMAND!!"+data[0]);
+                    chrome.runtime.sendMessage(editorExtensionId, {
+                      command: "lets_op",
+                      op: data[8],
+                      time: data[0],
+                      open: data[1],
+                      close: data[4],
+                    },function(response) {
+                        // if (!response.success)
+                          // handleError(url);
+                    });
+                  }else if(__op != "" && data[8] != "" && __time != data[0]){
+                    localStorage.setItem("op",data[8]);
+                    localStorage.setItem("time",data[0]);
+                    localStorage.setItem("open",data[1]);
+                    localStorage.setItem("close",data[4]);
+                    console.log("SEND OP COMMAND!!"+data[0]);
+                    chrome.runtime.sendMessage(editorExtensionId, {
+                      command: "lets_op",
+                      op: data[8],
+                      time: data[0],
+                      open: data[1],
+                      close: data[4],
+                    },function(response) {
+                        // if (!response.success)
+                          // handleError(url);
+                    });
+                  }else if(data[8] == ""){
+                    localStorage.setItem("op","");
+                    localStorage.setItem("time","");
+                    localStorage.setItem("open","");
+                    localStorage.setItem("close","");
+                  }*/
+
+                  $("#indikasi").html(result.indikasi);
+                  $("#konfirmasi").html(result.konfirmasi);
+                  $("#informasi").html(result.informasi);
+
+                  var chartDataList = {
+                    timestamp: new Date(data[0]).getTime(),
+                    open: +data[1],
+                    high: +data[2],
+                    low: +data[3],
+                    close: +data[4],
+                    volume: Math.ceil(+data[5]),
+                    op: data[8],
+                    add_text: data[9],
+                  };
+                  // if (DemoTab) {
+                  //     // $(DemoTab.document).ready(function () {
+                  //       if(data[8]== "OP_SELL"){
+                  //         alert("KLIK SELL");
+                  //       }else if(data[8]== "OP_BUY"){
+                  //         alert("KLIK BUY");
+                  //       }
+                  //       // $("#qa_trading_dealDownButton")
+                  //       // alert("OK");
+                  //         // $("#hideInDemo", DemoTab.document).removeClass('floatContainer');
+                  //         // $("#hideInDemo", DemoTab.document).css('display', 'none');
+                  //         // $("#play", DemoTab.document).trigger('click');
+                  //     // });
+                  // }
+                  chart.updateData(chartDataList)
+                }
+            });
+
+          }
+
+          loadData();
+
+          $("#date").on("change",function(){
+
+            if(this.value != '2021-09-02'){
+              //tidak perlu update data
+              clearInterval(t);
+              loadData();
+            }else{
+              loadData();
+              t=setInterval(updateData,1000);
+            }
+            // alert(this.value);
+          });
+
+          // 创建一个主图技术指标
+          // chart.createTechnicalIndicator('MA', false, { id: 'candle_pane' })
+          // 创建一个副图技术指标VOL
+          // chart.createTechnicalIndicator('VOL')
+          // 创建一个副图技术指标MACD
+          // chart.createTechnicalIndicator('MACD')
+          // 加载数据
+          // var chartDataList = kLineDataList.map(function (data) {
+          //     return {
+          //         timestamp: new Date(data[0]).getTime(),
+          //         open: +data[1],
+          //         high: +data[2],
+          //         low: +data[3],
+          //         close: +data[4],
+          //         volume: Math.ceil(+data[5]),
+          //     }
+          // })
+          // chart.applyNewData(chartDataList)
+      // }
+
+
+      /*
+          var options = {
+            series: [{
+            data: [
+              null          ]
+          }],
+            chart: {
+            type: 'candlestick',
+            height: 350
+          },
+          title: {
+            text: 'CandleStick Chart',
+            align: 'left'
+          },
+          xaxis: {
+            type: 'datetime'
+          },
+          yaxis: {
+            tooltip: {
+              enabled: true
+            }
+          }
+          };
+
+          var chart = new ApexCharts(document.querySelector("#chart"), options);
+
+          chart.render();*/
+
+          // var dt = new Date(2016, 01, 01);
+          // alert(dt);
+  </script>
+
+</body>
+</html>
